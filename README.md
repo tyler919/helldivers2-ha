@@ -14,6 +14,9 @@ Track the Helldivers 2 Galactic War status directly in Home Assistant! Monitor p
 - **Active Planets** - Track all active campaign planets with liberation progress
 - **Major Orders** - View current major orders and objectives
 - **Latest News** - Get in-game news updates
+- **Store Rotation** - Track current store items and expiration
+- **Leaderboards** - View top players and clans
+- **Elections** - Monitor election candidates and status
 - **Faction Breakdown** - See player distribution across fronts:
   - Terminid Front (bugs)
   - Automaton Front (robots)
@@ -55,6 +58,10 @@ The integration is configured via the UI. You can set:
 | `sensor.helldivers2_average_liberation` | Average liberation % across all active planets |
 | `sensor.helldivers2_major_order` | Current major order title |
 | `sensor.helldivers2_latest_news` | Most recent in-game news |
+| `sensor.helldivers2_store_rotation` | Store rotation expiration time |
+| `sensor.helldivers2_top_player` | Current top player on the leaderboard |
+| `sensor.helldivers2_top_clan` | Current top clan on the leaderboard |
+| `sensor.helldivers2_election_status` | Current election status |
 | `sensor.helldivers2_terminid_players` | Players fighting Terminids |
 | `sensor.helldivers2_automaton_players` | Players fighting Automatons |
 | `sensor.helldivers2_illuminate_players` | Players fighting Illuminate |
@@ -107,7 +114,7 @@ cards:
 
 ## API Credits
 
-This integration uses the [Helldivers Training Manual API](https://helldiverstrainingmanual.com/api), a community-driven API for Helldivers 2 data.
+This integration uses the [Diveharder API](https://api.diveharder.com), a comprehensive community-driven API for Helldivers 2 data.
 
 ## Disclaimer
 

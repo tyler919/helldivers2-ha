@@ -67,3 +67,25 @@ cards:
     entity: sensor.helldivers2_latest_news
     name: Super Earth Dispatch
     icon: mdi:newspaper
+
+  # Store & Leaderboards
+  - type: horizontal-stack
+    cards:
+      - type: entity
+        entity: sensor.helldivers2_store_rotation
+        name: Store Expires
+        icon: mdi:store
+      - type: entity
+        entity: sensor.helldivers2_top_player
+        name: Top Player
+        icon: mdi:trophy
+      - type: entity
+        entity: sensor.helldivers2_top_clan
+        name: Top Clan
+        icon: mdi:account-group-outline
+
+  # Election Status
+  - type: entity
+    entity: sensor.helldivers2_election_status
+    name: Election Status
+    icon: mdi:vote

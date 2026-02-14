@@ -11,7 +11,7 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from .const import API_WAR_STATUS, CONF_UPDATE_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import API_STATUS, CONF_UPDATE_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Helldivers2ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Test API connection
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(API_WAR_STATUS, timeout=10) as response:
+                    async with session.get(API_STATUS, timeout=10) as response:
                         response.raise_for_status()
                         await response.json()
             except Exception:

@@ -11,13 +11,17 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
-    API_MAJOR_ORDERS,
-    API_WAR_CAMPAIGN,
-    API_WAR_NEWS,
-    API_WAR_STATUS,
+    API_STATUS,
+    API_MAJOR_ORDER,
+    API_NEWS_FEED,
+    API_PLANET_STATS,
+    API_STORE_ROTATION,
+    API_PLANETS,
+    API_PLAYER_LEADERBOARD,
+    API_CLAN_LEADERBOARD,
+    API_ELECTION_CANDIDATES,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    FACTION_NAMES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,20 +48,43 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             async with asyncio.timeout(30):
                 # Fetch all data concurrently
-                war_status, campaign, major_orders, news = await asyncio.gather(
-                    self._fetch_json(API_WAR_STATUS),
-                    self._fetch_json(API_WAR_CAMPAIGN),
-                    self._fetch_json(API_MAJOR_ORDERS),
-                    self._fetch_json(API_WAR_NEWS),
+                results = await asyncio.gather(
+                    self._fetch_json(API_STATUS),
+                    self._fetch_json(API_PLANET_STATS),
+                    self._fetch_json(API_MAJOR_ORDER),
+                    self._fetch_json(API_NEWS_FEED),
+                    self._fetch_json(API_STORE_ROTATION),
+                    self._fetch_json(API_PLANETS),
+                    self._fetch_json(API_PLAYER_LEADERBOARD),
+                    self._fetch_json(API_CLAN_LEADERBOARD),
+                    self._fetch_json(API_ELECTION_CANDIDATES),
                     return_exceptions=True,
                 )
 
+            # Unpack results
+            (
+                status,
+                planet_stats,
+                major_orders,
+                news,
+                store_rotation,
+                planets,
+                player_leaderboard,
+                clan_leaderboard,
+                election_candidates,
+            ) = results
+
             # Process data
             data: dict[str, Any] = {
-                "war_status": war_status if not isinstance(war_status, Exception) else {},
-                "campaign": campaign if not isinstance(campaign, Exception) else [],
+                "status": status if not isinstance(status, Exception) else {},
+                "planet_stats": planet_stats if not isinstance(planet_stats, Exception) else {},
                 "major_orders": major_orders if not isinstance(major_orders, Exception) else [],
                 "news": news if not isinstance(news, Exception) else [],
+                "store_rotation": store_rotation if not isinstance(store_rotation, Exception) else {},
+                "planets": planets if not isinstance(planets, Exception) else [],
+                "player_leaderboard": player_leaderboard if not isinstance(player_leaderboard, Exception) else [],
+                "clan_leaderboard": clan_leaderboard if not isinstance(clan_leaderboard, Exception) else [],
+                "election_candidates": election_candidates if not isinstance(election_candidates, Exception) else [],
             }
 
             # Calculate aggregated stats
@@ -74,6 +101,8 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Fetch JSON data from a URL."""
         assert self._session is not None
         async with self._session.get(url) as response:
+            if response.status == 204:
+                return None
             response.raise_for_status()
             return await response.json()
 
@@ -87,47 +116,40 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             "liberation_avg": 0,
         }
 
-        campaign = data.get("campaign", [])
-        if not campaign or not isinstance(campaign, list):
-            return stats
+        # Get planet stats
+        planet_stats = data.get("planet_stats")
+        if planet_stats and isinstance(planet_stats, dict):
+            planets_data = planet_stats.get("planets", [])
+            if isinstance(planets_data, list):
+                active_planets = [p for p in planets_data if isinstance(p, dict) and p.get("players", 0) > 0]
+                stats["active_planets"] = len(active_planets)
 
-        stats["active_planets"] = len(campaign)
+                total_liberation = 0
+                faction_planets: dict[str, int] = {}
+                faction_players: dict[str, int] = {}
 
-        total_liberation = 0
-        faction_planets: dict[int, int] = {}
-        faction_players: dict[int, int] = {}
+                for planet in active_planets:
+                    players = planet.get("players", 0) or 0
+                    stats["total_players"] += players
 
-        for planet in campaign:
-            if not isinstance(planet, dict):
-                continue
+                    liberation = planet.get("liberation", 0) or 0
+                    total_liberation += liberation
 
-            # Player count
-            players = planet.get("players", 0) or 0
-            stats["total_players"] += players
+                    faction = planet.get("owner")
+                    if faction:
+                        faction_planets[faction] = faction_planets.get(faction, 0) + 1
+                        faction_players[faction] = faction_players.get(faction, 0) + players
 
-            # Liberation percentage
-            liberation = planet.get("liberation", 0) or 0
-            total_liberation += liberation
+                if stats["active_planets"] > 0:
+                    stats["liberation_avg"] = round(total_liberation / stats["active_planets"], 2)
 
-            # Faction stats
-            faction = planet.get("faction")
-            if faction:
-                faction_planets[faction] = faction_planets.get(faction, 0) + 1
-                faction_players[faction] = faction_players.get(faction, 0) + players
+                stats["planets_by_faction"] = faction_planets
+                stats["players_by_faction"] = faction_players
 
-        # Calculate average liberation
-        if stats["active_planets"] > 0:
-            stats["liberation_avg"] = round(total_liberation / stats["active_planets"], 2)
-
-        # Convert faction IDs to names
-        stats["planets_by_faction"] = {
-            FACTION_NAMES.get(k, f"Unknown ({k})"): v
-            for k, v in faction_planets.items()
-        }
-        stats["players_by_faction"] = {
-            FACTION_NAMES.get(k, f"Unknown ({k})"): v
-            for k, v in faction_players.items()
-        }
+        # Fallback to status data if planet_stats doesn't have what we need
+        status = data.get("status")
+        if status and isinstance(status, dict) and stats["total_players"] == 0:
+            stats["total_players"] = status.get("player_count", 0) or 0
 
         return stats
 
