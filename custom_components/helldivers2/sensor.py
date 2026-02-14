@@ -40,194 +40,171 @@ class Helldivers2SensorEntityDescription(
 
 def get_total_players(data: dict[str, Any]) -> int:
     """Get total player count."""
-    # Try stats first, then status
-    players = data.get("stats", {}).get("total_players", 0)
-    if not players:
-        status = data.get("status")
-        if status and isinstance(status, dict):
-            players = status.get("player_count", 0)
-    return players or 0
+    war = data.get("war", {})
+    if war and isinstance(war, dict):
+        stats = war.get("statistics", {})
+        if stats and isinstance(stats, dict):
+            return stats.get("playerCount", 0)
+    return 0
 
 
 def get_active_planets(data: dict[str, Any]) -> int:
     """Get active planet count."""
-    return data.get("stats", {}).get("active_planets", 0)
+    campaigns = data.get("campaigns", [])
+    return len(campaigns) if isinstance(campaigns, list) else 0
 
 
 def get_avg_liberation(data: dict[str, Any]) -> float:
     """Get average liberation percentage."""
-    return data.get("stats", {}).get("liberation_avg", 0)
+    campaigns = data.get("campaigns", [])
+    if not campaigns or not isinstance(campaigns, list):
+        return 0
+
+    total = 0
+    count = 0
+    for campaign in campaigns:
+        if isinstance(campaign, dict):
+            planet = campaign.get("planet", {})
+            if isinstance(planet, dict):
+                lib = planet.get("liberation", 0)
+                if lib:
+                    total += lib
+                    count += 1
+
+    return round(total / count, 2) if count > 0 else 0
 
 
 def get_major_order_title(data: dict[str, Any]) -> str:
     """Get current major order title."""
-    orders = data.get("major_orders")
-    if orders and isinstance(orders, list) and len(orders) > 0:
-        order = orders[0]
+    assignments = data.get("assignments", [])
+    if assignments and isinstance(assignments, list) and len(assignments) > 0:
+        order = assignments[0]
         if isinstance(order, dict):
-            return order.get("title", order.get("brief", "No Active Order"))[:255]
+            briefing = order.get("briefing", "")
+            if briefing:
+                return briefing[:255]
+            title = order.get("title", "No Active Order")
+            return title[:255] if title else "No Active Order"
     return "No Active Order"
 
 
 def get_major_order_attrs(data: dict[str, Any]) -> dict[str, Any]:
     """Get major order attributes."""
-    orders = data.get("major_orders")
-    if orders and isinstance(orders, list) and len(orders) > 0:
-        order = orders[0]
+    assignments = data.get("assignments", [])
+    if assignments and isinstance(assignments, list) and len(assignments) > 0:
+        order = assignments[0]
         if isinstance(order, dict):
             return {
-                "description": order.get("description", order.get("brief", "")),
-                "reward_amount": order.get("reward", {}).get("amount", 0) if isinstance(order.get("reward"), dict) else 0,
-                "reward_type": order.get("reward", {}).get("type", "") if isinstance(order.get("reward"), dict) else "",
-                "expires": order.get("expires", order.get("expiration", "")),
+                "description": order.get("description", ""),
+                "briefing": order.get("briefing", ""),
+                "expiration": order.get("expiration", ""),
                 "progress": order.get("progress", []),
+                "reward_type": order.get("reward", {}).get("type", "") if isinstance(order.get("reward"), dict) else "",
+                "reward_amount": order.get("reward", {}).get("amount", 0) if isinstance(order.get("reward"), dict) else 0,
             }
     return {}
 
 
 def get_latest_news(data: dict[str, Any]) -> str:
     """Get latest news headline."""
-    news = data.get("news")
-    if news and isinstance(news, list) and len(news) > 0:
-        item = news[-1] if isinstance(news[-1], dict) else news[0]
+    dispatches = data.get("dispatches", [])
+    if dispatches and isinstance(dispatches, list) and len(dispatches) > 0:
+        item = dispatches[0]
         if isinstance(item, dict):
-            return item.get("message", item.get("title", "No News"))[:255]
+            message = item.get("message", "No News")
+            return message[:255] if message else "No News"
     return "No News"
 
 
 def get_news_attrs(data: dict[str, Any]) -> dict[str, Any]:
     """Get news attributes."""
-    news = data.get("news")
+    dispatches = data.get("dispatches", [])
     items = []
-    if news and isinstance(news, list):
-        for item in news[-5:]:
+    if dispatches and isinstance(dispatches, list):
+        for item in dispatches[:5]:
             if isinstance(item, dict):
                 items.append({
-                    "message": item.get("message", item.get("title", "")),
-                    "published": item.get("published", item.get("timestamp", "")),
+                    "message": item.get("message", ""),
+                    "published": item.get("published", ""),
                 })
     return {"recent_news": items}
-
-
-def get_store_expiration(data: dict[str, Any]) -> str:
-    """Get store rotation expiration."""
-    store = data.get("store_rotation")
-    if store and isinstance(store, dict):
-        return store.get("expiration", store.get("expires", "Unknown"))
-    return "Unknown"
-
-
-def get_store_attrs(data: dict[str, Any]) -> dict[str, Any]:
-    """Get store rotation attributes."""
-    store = data.get("store_rotation")
-    if store and isinstance(store, dict):
-        items = store.get("items", [])
-        return {
-            "items": items[:10] if isinstance(items, list) else [],
-            "item_count": len(items) if isinstance(items, list) else 0,
-        }
-    return {"items": [], "item_count": 0}
-
-
-def get_top_player(data: dict[str, Any]) -> str:
-    """Get top player name."""
-    leaderboard = data.get("player_leaderboard")
-    if leaderboard and isinstance(leaderboard, list) and len(leaderboard) > 0:
-        player = leaderboard[0]
-        if isinstance(player, dict):
-            return player.get("name", player.get("player_name", "Unknown"))
-    return "Unknown"
-
-
-def get_player_leaderboard_attrs(data: dict[str, Any]) -> dict[str, Any]:
-    """Get player leaderboard attributes."""
-    leaderboard = data.get("player_leaderboard")
-    if leaderboard and isinstance(leaderboard, list):
-        top_10 = []
-        for i, player in enumerate(leaderboard[:10]):
-            if isinstance(player, dict):
-                top_10.append({
-                    "rank": i + 1,
-                    "name": player.get("name", player.get("player_name", "Unknown")),
-                    "score": player.get("score", player.get("kills", 0)),
-                })
-        return {"top_players": top_10}
-    return {"top_players": []}
-
-
-def get_top_clan(data: dict[str, Any]) -> str:
-    """Get top clan name."""
-    leaderboard = data.get("clan_leaderboard")
-    if leaderboard and isinstance(leaderboard, list) and len(leaderboard) > 0:
-        clan = leaderboard[0]
-        if isinstance(clan, dict):
-            return clan.get("name", clan.get("clan_name", "Unknown"))
-    return "Unknown"
-
-
-def get_clan_leaderboard_attrs(data: dict[str, Any]) -> dict[str, Any]:
-    """Get clan leaderboard attributes."""
-    leaderboard = data.get("clan_leaderboard")
-    if leaderboard and isinstance(leaderboard, list):
-        top_10 = []
-        for i, clan in enumerate(leaderboard[:10]):
-            if isinstance(clan, dict):
-                top_10.append({
-                    "rank": i + 1,
-                    "name": clan.get("name", clan.get("clan_name", "Unknown")),
-                    "score": clan.get("score", clan.get("exp", 0)),
-                    "members": clan.get("members", clan.get("member_count", 0)),
-                })
-        return {"top_clans": top_10}
-    return {"top_clans": []}
-
-
-def get_election_status(data: dict[str, Any]) -> str:
-    """Get election status."""
-    candidates = data.get("election_candidates")
-    if candidates and isinstance(candidates, list) and len(candidates) > 0:
-        return f"{len(candidates)} Candidates"
-    return "No Election"
-
-
-def get_election_attrs(data: dict[str, Any]) -> dict[str, Any]:
-    """Get election attributes."""
-    candidates = data.get("election_candidates")
-    if candidates and isinstance(candidates, list):
-        return {"candidates": candidates[:10]}
-    return {"candidates": []}
 
 
 def get_faction_players(faction: str) -> Callable[[dict[str, Any]], int]:
     """Get player count for a specific faction."""
     def _get_players(data: dict[str, Any]) -> int:
-        return data.get("stats", {}).get("players_by_faction", {}).get(faction, 0)
+        campaigns = data.get("campaigns", [])
+        total = 0
+        if campaigns and isinstance(campaigns, list):
+            for campaign in campaigns:
+                if isinstance(campaign, dict):
+                    planet = campaign.get("planet", {})
+                    if isinstance(planet, dict):
+                        owner = planet.get("currentOwner", "")
+                        if owner == faction:
+                            stats = planet.get("statistics", {})
+                            if isinstance(stats, dict):
+                                total += stats.get("playerCount", 0)
+        return total
     return _get_players
 
 
 def get_faction_planets(faction: str) -> Callable[[dict[str, Any]], int]:
     """Get planet count for a specific faction."""
     def _get_planets(data: dict[str, Any]) -> int:
-        return data.get("stats", {}).get("planets_by_faction", {}).get(faction, 0)
+        campaigns = data.get("campaigns", [])
+        count = 0
+        if campaigns and isinstance(campaigns, list):
+            for campaign in campaigns:
+                if isinstance(campaign, dict):
+                    planet = campaign.get("planet", {})
+                    if isinstance(planet, dict):
+                        owner = planet.get("currentOwner", "")
+                        if owner == faction:
+                            count += 1
+        return count
     return _get_planets
 
 
 def get_campaign_attrs(data: dict[str, Any]) -> dict[str, Any]:
     """Get campaign attributes with planet details."""
-    planet_stats = data.get("planet_stats")
+    campaigns = data.get("campaigns", [])
     planets = []
-    if planet_stats and isinstance(planet_stats, dict):
-        planets_data = planet_stats.get("planets", [])
-        if isinstance(planets_data, list):
-            active = [p for p in planets_data if isinstance(p, dict) and p.get("players", 0) > 0]
-            for planet in sorted(active, key=lambda x: x.get("players", 0), reverse=True)[:15]:
-                planets.append({
-                    "name": planet.get("name", "Unknown"),
-                    "players": planet.get("players", 0),
-                    "liberation": planet.get("liberation", 0),
-                    "owner": planet.get("owner", "Unknown"),
-                })
-    return {"active_campaigns": planets}
+    if campaigns and isinstance(campaigns, list):
+        for campaign in campaigns:
+            if isinstance(campaign, dict):
+                planet = campaign.get("planet", {})
+                if isinstance(planet, dict):
+                    stats = planet.get("statistics", {}) if isinstance(planet.get("statistics"), dict) else {}
+                    planets.append({
+                        "name": planet.get("name", "Unknown"),
+                        "players": stats.get("playerCount", 0),
+                        "liberation": planet.get("liberation", 0),
+                        "owner": planet.get("currentOwner", "Unknown"),
+                    })
+        # Sort by player count
+        planets.sort(key=lambda x: x.get("players", 0), reverse=True)
+    return {"active_campaigns": planets[:15]}
+
+
+def get_war_stats_attrs(data: dict[str, Any]) -> dict[str, Any]:
+    """Get war statistics attributes."""
+    war = data.get("war", {})
+    if war and isinstance(war, dict):
+        stats = war.get("statistics", {})
+        if stats and isinstance(stats, dict):
+            return {
+                "missions_won": stats.get("missionsWon", 0),
+                "missions_lost": stats.get("missionsLost", 0),
+                "mission_success_rate": stats.get("missionSuccessRate", 0),
+                "terminid_kills": stats.get("terminidKills", 0),
+                "automaton_kills": stats.get("automatonKills", 0),
+                "illuminate_kills": stats.get("illuminateKills", 0),
+                "bullets_fired": stats.get("bulletsFired", 0),
+                "deaths": stats.get("deaths", 0),
+                "friendlies": stats.get("friendlies", 0),
+            }
+    return {}
 
 
 # =============================================================================
@@ -243,7 +220,7 @@ SENSOR_DESCRIPTIONS: tuple[Helldivers2SensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="players",
         value_fn=get_total_players,
-        attr_fn=None,
+        attr_fn=get_war_stats_attrs,
     ),
     Helldivers2SensorEntityDescription(
         key="active_planets",
@@ -278,37 +255,6 @@ SENSOR_DESCRIPTIONS: tuple[Helldivers2SensorEntityDescription, ...] = (
         value_fn=get_latest_news,
         attr_fn=get_news_attrs,
     ),
-    # Store
-    Helldivers2SensorEntityDescription(
-        key="store_rotation",
-        name="Store Rotation",
-        icon="mdi:store",
-        value_fn=get_store_expiration,
-        attr_fn=get_store_attrs,
-    ),
-    # Leaderboards
-    Helldivers2SensorEntityDescription(
-        key="top_player",
-        name="Top Player",
-        icon="mdi:trophy",
-        value_fn=get_top_player,
-        attr_fn=get_player_leaderboard_attrs,
-    ),
-    Helldivers2SensorEntityDescription(
-        key="top_clan",
-        name="Top Clan",
-        icon="mdi:account-group-outline",
-        value_fn=get_top_clan,
-        attr_fn=get_clan_leaderboard_attrs,
-    ),
-    # Elections
-    Helldivers2SensorEntityDescription(
-        key="election_status",
-        name="Election Status",
-        icon="mdi:vote",
-        value_fn=get_election_status,
-        attr_fn=get_election_attrs,
-    ),
     # Faction Players
     Helldivers2SensorEntityDescription(
         key="terminid_players",
@@ -325,7 +271,7 @@ SENSOR_DESCRIPTIONS: tuple[Helldivers2SensorEntityDescription, ...] = (
         icon="mdi:robot",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="players",
-        value_fn=get_faction_players("Automatons"),
+        value_fn=get_faction_players("Automaton"),
         attr_fn=None,
     ),
     Helldivers2SensorEntityDescription(
@@ -353,7 +299,7 @@ SENSOR_DESCRIPTIONS: tuple[Helldivers2SensorEntityDescription, ...] = (
         icon="mdi:robot",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="planets",
-        value_fn=get_faction_planets("Automatons"),
+        value_fn=get_faction_planets("Automaton"),
         attr_fn=None,
     ),
     Helldivers2SensorEntityDescription(
