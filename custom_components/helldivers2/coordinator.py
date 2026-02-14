@@ -16,6 +16,7 @@ from .const import (
     API_CAMPAIGNS,
     API_ASSIGNMENTS,
     API_DISPATCHES,
+    API_STEAM,
     API_HEADERS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -51,6 +52,7 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
                     self._fetch_json(API_CAMPAIGNS),
                     self._fetch_json(API_ASSIGNMENTS),
                     self._fetch_json(API_DISPATCHES),
+                    self._fetch_json(API_STEAM),
                     return_exceptions=True,
                 )
 
@@ -61,6 +63,7 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
                 campaigns,
                 assignments,
                 dispatches,
+                steam,
             ) = results
 
             # Process data
@@ -70,6 +73,7 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "campaigns": campaigns if not isinstance(campaigns, Exception) else [],
                 "assignments": assignments if not isinstance(assignments, Exception) else [],
                 "dispatches": dispatches if not isinstance(dispatches, Exception) else [],
+                "steam": steam if not isinstance(steam, Exception) else [],
             }
 
             # Calculate aggregated stats

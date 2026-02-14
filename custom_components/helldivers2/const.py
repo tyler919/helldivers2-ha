@@ -10,6 +10,7 @@ API_CAMPAIGNS = f"{API_BASE_URL}/campaigns"
 API_ASSIGNMENTS = f"{API_BASE_URL}/assignments"
 API_DISPATCHES = f"{API_BASE_URL}/dispatches"
 API_STEAM = f"{API_BASE_URL}/steam"
+API_PLANET_EVENTS = f"{API_BASE_URL}/planet-events"
 
 # Required API headers
 API_HEADERS = {
