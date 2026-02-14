@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Helldivers 2",
+        "description": "Set up the Helldivers 2 Galactic War tracker.",
+        "data": {
+          "update_interval": "Update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the Helldivers 2 API. Please try again later."
+    },
+    "abort": {
+      "already_configured": "Helldivers 2 is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Helldivers 2 Options",
+        "data": {
+          "update_interval": "Update interval (seconds)"
+        }
+      }
+    }
+  }
+}

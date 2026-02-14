@@ -1,0 +1,69 @@
+# Helldivers 2 Dashboard Card Example
+# Copy this to your Lovelace dashboard
+
+type: vertical-stack
+cards:
+  # Header
+  - type: markdown
+    content: |
+      # Helldivers 2
+      ## Galactic War Status
+
+  # Player Stats
+  - type: horizontal-stack
+    cards:
+      - type: entity
+        entity: sensor.helldivers2_total_players
+        name: Total Helldivers
+        icon: mdi:account-group
+      - type: entity
+        entity: sensor.helldivers2_active_planets
+        name: Active Planets
+        icon: mdi:earth
+      - type: entity
+        entity: sensor.helldivers2_average_liberation
+        name: Avg Liberation
+        icon: mdi:progress-check
+
+  # Faction Player Counts
+  - type: entities
+    title: Front Line Status
+    entities:
+      - entity: sensor.helldivers2_terminid_players
+        name: Terminid Front
+        icon: mdi:bug
+        secondary_info: last-updated
+      - entity: sensor.helldivers2_automaton_players
+        name: Automaton Front
+        icon: mdi:robot
+        secondary_info: last-updated
+      - entity: sensor.helldivers2_illuminate_players
+        name: Illuminate Front
+        icon: mdi:alien
+        secondary_info: last-updated
+
+  # Faction Planet Counts
+  - type: glance
+    title: Contested Planets
+    entities:
+      - entity: sensor.helldivers2_terminid_planets
+        name: Bugs
+        icon: mdi:bug
+      - entity: sensor.helldivers2_automaton_planets
+        name: Bots
+        icon: mdi:robot
+      - entity: sensor.helldivers2_illuminate_planets
+        name: Squids
+        icon: mdi:alien
+
+  # Major Order
+  - type: entity
+    entity: sensor.helldivers2_major_order
+    name: Current Major Order
+    icon: mdi:clipboard-text
+
+  # Latest News
+  - type: entity
+    entity: sensor.helldivers2_latest_news
+    name: Super Earth Dispatch
+    icon: mdi:newspaper
