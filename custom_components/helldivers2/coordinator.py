@@ -38,6 +38,8 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=update_interval),
         )
         self._session: aiohttp.ClientSession | None = None
+        # Timeout per endpoint (seconds)
+        self._timeout = aiohttp.ClientTimeout(total=20, connect=10)
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the Helldivers 2 API."""
@@ -50,7 +52,7 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             debug_log(self.hass, "Starting API data fetch...")
 
-            async with asyncio.timeout(30):
+            async with asyncio.timeout(60):
                 # Fetch all data concurrently
                 results = await asyncio.gather(
                     self._fetch_json(API_WAR),
@@ -103,7 +105,7 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             return data
 
         except asyncio.TimeoutError as err:
-            debug_log(self.hass, "API request timed out after 30 seconds")
+            debug_log(self.hass, "API request timed out after 60 seconds")
             await self._report_api_error("TimeoutError", "Timeout fetching Helldivers 2 data")
             raise UpdateFailed("Timeout fetching Helldivers 2 data") from err
         except aiohttp.ClientError as err:
@@ -111,14 +113,28 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._report_api_error("ClientError", str(err), traceback.format_exc())
             raise UpdateFailed(f"Error fetching Helldivers 2 data: {err}") from err
 
-    async def _fetch_json(self, url: str) -> Any:
-        """Fetch JSON data from a URL."""
+    async def _fetch_json(self, url: str, retries: int = 2) -> Any:
+        """Fetch JSON data from a URL with retry logic."""
         assert self._session is not None
-        async with self._session.get(url) as response:
-            if response.status == 204:
-                return None
-            response.raise_for_status()
-            return await response.json()
+        last_error = None
+
+        for attempt in range(retries + 1):
+            try:
+                async with self._session.get(url, timeout=self._timeout) as response:
+                    if response.status == 204:
+                        return None
+                    response.raise_for_status()
+                    return await response.json()
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                last_error = err
+                if attempt < retries:
+                    # Wait before retry (exponential backoff)
+                    await asyncio.sleep(2 ** attempt)
+                    _LOGGER.debug("Retrying %s (attempt %d/%d)", url, attempt + 2, retries + 1)
+                continue
+
+        # All retries failed
+        raise last_error if last_error else aiohttp.ClientError("Unknown error")
 
     def _calculate_stats(self, data: dict[str, Any]) -> dict[str, Any]:
         """Calculate aggregated statistics from the raw data."""
