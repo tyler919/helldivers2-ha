@@ -25,30 +25,30 @@ class Helldivers2Panel extends HTMLElement {
   _updateData() {
     if (!this._hass) return;
 
-    // Get data from sensors
+    // Get data from sensors (entity IDs use "helldivers_2" due to has_entity_name)
     const sensors = {
-      totalPlayers: this._hass.states["sensor.helldivers2_total_players"],
-      activePlanets: this._hass.states["sensor.helldivers2_active_planets"],
-      avgLiberation: this._hass.states["sensor.helldivers2_average_liberation"],
-      hottestPlanet: this._hass.states["sensor.helldivers2_hottest_planet"],
-      majorOrder: this._hass.states["sensor.helldivers2_major_order"],
-      majorOrderProgress: this._hass.states["sensor.helldivers2_major_order_progress"],
-      majorOrderTimeLeft: this._hass.states["sensor.helldivers2_major_order_expiration"],
-      majorOrderReward: this._hass.states["sensor.helldivers2_major_order_reward"],
-      missionsWon: this._hass.states["sensor.helldivers2_missions_won"],
-      missionsLost: this._hass.states["sensor.helldivers2_missions_lost"],
-      successRate: this._hass.states["sensor.helldivers2_mission_success_rate"],
-      terminidKills: this._hass.states["sensor.helldivers2_terminid_kills"],
-      automatonKills: this._hass.states["sensor.helldivers2_automaton_kills"],
-      illuminateKills: this._hass.states["sensor.helldivers2_illuminate_kills"],
-      totalDeaths: this._hass.states["sensor.helldivers2_total_deaths"],
-      friendlyFire: this._hass.states["sensor.helldivers2_friendly_kills"],
-      terminidPlayers: this._hass.states["sensor.helldivers2_terminid_players"],
-      automatonPlayers: this._hass.states["sensor.helldivers2_automaton_players"],
-      illuminatePlayers: this._hass.states["sensor.helldivers2_illuminate_players"],
-      latestNews: this._hass.states["sensor.helldivers2_latest_news"],
-      latestPatch: this._hass.states["sensor.helldivers2_latest_patch"],
-      gameVersion: this._hass.states["sensor.helldivers2_game_version"],
+      totalPlayers: this._hass.states["sensor.helldivers_2_total_players"],
+      activePlanets: this._hass.states["sensor.helldivers_2_active_planets"],
+      avgLiberation: this._hass.states["sensor.helldivers_2_average_liberation"],
+      hottestPlanet: this._hass.states["sensor.helldivers_2_hottest_planet"],
+      majorOrder: this._hass.states["sensor.helldivers_2_major_order"],
+      majorOrderProgress: this._hass.states["sensor.helldivers_2_major_order_progress"],
+      majorOrderTimeLeft: this._hass.states["sensor.helldivers_2_major_order_expiration"],
+      majorOrderReward: this._hass.states["sensor.helldivers_2_major_order_reward"],
+      missionsWon: this._hass.states["sensor.helldivers_2_missions_won"],
+      missionsLost: this._hass.states["sensor.helldivers_2_missions_lost"],
+      successRate: this._hass.states["sensor.helldivers_2_mission_success_rate"],
+      terminidKills: this._hass.states["sensor.helldivers_2_terminid_kills"],
+      automatonKills: this._hass.states["sensor.helldivers_2_automaton_kills"],
+      illuminateKills: this._hass.states["sensor.helldivers_2_illuminate_kills"],
+      totalDeaths: this._hass.states["sensor.helldivers_2_total_deaths"],
+      friendlyFire: this._hass.states["sensor.helldivers_2_friendly_kills"],
+      terminidPlayers: this._hass.states["sensor.helldivers_2_terminid_players"],
+      automatonPlayers: this._hass.states["sensor.helldivers_2_automaton_players"],
+      illuminatePlayers: this._hass.states["sensor.helldivers_2_illuminate_players"],
+      latestNews: this._hass.states["sensor.helldivers_2_latest_news"],
+      latestPatch: this._hass.states["sensor.helldivers_2_latest_patch"],
+      gameVersion: this._hass.states["sensor.helldivers_2_game_version"],
     };
 
     this._data = {};
