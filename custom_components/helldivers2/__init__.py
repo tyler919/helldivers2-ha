@@ -6,7 +6,10 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from homeassistant.components.frontend import async_register_built_in_panel
+from homeassistant.components.frontend import (
+    async_register_built_in_panel,
+    async_remove_panel,
+)
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -91,8 +94,9 @@ async def _async_register_panel(hass: HomeAssistant) -> None:
             ]
         )
 
-        # Register the panel using the correct method
-        hass.components.frontend.async_register_built_in_panel(
+        # Register the panel using the direct import
+        async_register_built_in_panel(
+            hass,
             component_name="custom",
             sidebar_title=PANEL_TITLE,
             sidebar_icon=PANEL_ICON,
@@ -131,7 +135,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if e.entry_id != entry.entry_id
             ]
             if not remaining_entries and hass.data[DOMAIN].get(PANEL_REGISTERED):
-                hass.components.frontend.async_remove_panel(PANEL_URL)
+                async_remove_panel(hass, PANEL_URL)
                 hass.data[DOMAIN][PANEL_REGISTERED] = False
                 _LOGGER.info("Helldivers 2 panel removed")
 
