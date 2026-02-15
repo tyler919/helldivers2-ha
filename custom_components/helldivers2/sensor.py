@@ -385,7 +385,9 @@ def get_latest_news(data: dict[str, Any]) -> str:
     if dispatches and isinstance(dispatches, list) and len(dispatches) > 0:
         item = dispatches[0]
         if isinstance(item, dict):
-            message = item.get("message", "No News")
+            message = item.get("message")
+            if not message:
+                return "No News"
             # Strip HTML-like tags
             import re
             clean = re.sub(r'<[^>]+>', '', message)
@@ -401,7 +403,7 @@ def get_news_attrs(data: dict[str, Any]) -> dict[str, Any]:
     if dispatches and isinstance(dispatches, list):
         for item in dispatches[:10]:
             if isinstance(item, dict):
-                message = item.get("message", "")
+                message = item.get("message") or ""
                 clean = re.sub(r'<[^>]+>', '', message)
                 items.append({
                     "message": clean,
