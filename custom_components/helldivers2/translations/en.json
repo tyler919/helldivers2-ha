@@ -3,14 +3,21 @@
     "step": {
       "user": {
         "title": "Helldivers 2",
-        "description": "Set up the Helldivers 2 Galactic War tracker.",
+        "description": "Set up the Helldivers 2 Galactic War tracker.\n\nOptional: Enable error reporting to automatically report issues to GitHub.",
         "data": {
-          "update_interval": "Update interval (seconds)"
+          "update_interval": "Update interval (seconds)",
+          "error_reporting": "Enable automatic error reporting",
+          "github_token": "GitHub Personal Access Token (for error reporting)"
+        },
+        "data_description": {
+          "error_reporting": "When enabled, errors will be automatically reported to GitHub issues.",
+          "github_token": "Create a token at {github_token_url} with 'public_repo' scope."
         }
       }
     },
     "error": {
-      "cannot_connect": "Unable to connect to the Helldivers 2 API. Please try again later."
+      "cannot_connect": "Unable to connect to the Helldivers 2 API. Please try again later.",
+      "invalid_github_token": "Invalid GitHub token. Please check your token and try again."
     },
     "abort": {
       "already_configured": "Helldivers 2 is already configured."
@@ -21,9 +28,18 @@
       "init": {
         "title": "Helldivers 2 Options",
         "data": {
-          "update_interval": "Update interval (seconds)"
+          "update_interval": "Update interval (seconds)",
+          "error_reporting": "Enable automatic error reporting",
+          "github_token": "GitHub Personal Access Token"
+        },
+        "data_description": {
+          "error_reporting": "When enabled, errors will be automatically reported to GitHub issues.",
+          "github_token": "Create a token at {github_token_url} with 'public_repo' scope."
         }
       }
+    },
+    "error": {
+      "invalid_github_token": "Invalid GitHub token. Please check your token and try again."
     }
   }
 }

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import traceback
 from datetime import timedelta
 from typing import Any
 
@@ -82,8 +83,10 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             return data
 
         except asyncio.TimeoutError as err:
+            await self._report_api_error("TimeoutError", "Timeout fetching Helldivers 2 data")
             raise UpdateFailed("Timeout fetching Helldivers 2 data") from err
         except aiohttp.ClientError as err:
+            await self._report_api_error("ClientError", str(err), traceback.format_exc())
             raise UpdateFailed(f"Error fetching Helldivers 2 data: {err}") from err
 
     async def _fetch_json(self, url: str) -> Any:
@@ -153,6 +156,29 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             stats["players_by_faction"] = faction_players
 
         return stats
+
+    async def _report_api_error(
+        self,
+        error_type: str,
+        error_message: str,
+        error_traceback: str | None = None,
+    ) -> None:
+        """Report API errors to GitHub if error reporting is enabled."""
+        try:
+            from . import get_error_reporter
+            reporter = get_error_reporter(self.hass)
+            if reporter:
+                await reporter.report_error(
+                    error_type=f"API_{error_type}",
+                    error_message=error_message,
+                    traceback=error_traceback,
+                    additional_info={
+                        "component": "coordinator",
+                        "ha_version": self.hass.config.version,
+                    },
+                )
+        except Exception as e:
+            _LOGGER.debug("Failed to report API error: %s", e)
 
     async def async_shutdown(self) -> None:
         """Shutdown the coordinator."""

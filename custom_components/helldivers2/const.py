@@ -36,3 +36,9 @@ FACTION_NAMES = {
 
 # Configuration
 CONF_UPDATE_INTERVAL = "update_interval"
+CONF_ERROR_REPORTING = "error_reporting"
+CONF_GITHUB_TOKEN = "github_token"
+
+# GitHub repo for issue reporting
+GITHUB_REPO_OWNER = "tyler919"
+GITHUB_REPO_NAME = "helldivers2-ha"
