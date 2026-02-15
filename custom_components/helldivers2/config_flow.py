@@ -17,6 +17,7 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_ERROR_REPORTING,
     CONF_GITHUB_TOKEN,
+    CONF_DEBUG_LOGGING,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -65,6 +66,7 @@ class Helldivers2ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             ),
                             CONF_ERROR_REPORTING: user_input.get(CONF_ERROR_REPORTING, False),
                             CONF_GITHUB_TOKEN: user_input.get(CONF_GITHUB_TOKEN, ""),
+                            CONF_DEBUG_LOGGING: user_input.get(CONF_DEBUG_LOGGING, False),
                         },
                     )
 
@@ -96,6 +98,10 @@ class Helldivers2ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             type=selector.TextSelectorType.PASSWORD,
                         )
                     ),
+                    vol.Optional(
+                        CONF_DEBUG_LOGGING,
+                        default=False,
+                    ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,
@@ -183,6 +189,10 @@ class Helldivers2OptionsFlow(config_entries.OptionsFlow):
                             type=selector.TextSelectorType.PASSWORD,
                         )
                     ),
+                    vol.Optional(
+                        CONF_DEBUG_LOGGING,
+                        default=self.config_entry.options.get(CONF_DEBUG_LOGGING, False),
+                    ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,

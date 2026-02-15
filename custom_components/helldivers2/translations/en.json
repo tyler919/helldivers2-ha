@@ -7,11 +7,13 @@
         "data": {
           "update_interval": "Update interval (seconds)",
           "error_reporting": "Enable automatic error reporting",
-          "github_token": "GitHub Personal Access Token (for error reporting)"
+          "github_token": "GitHub Personal Access Token (for error reporting)",
+          "debug_logging": "Enable debug logging"
         },
         "data_description": {
           "error_reporting": "When enabled, errors will be automatically reported to GitHub issues.",
-          "github_token": "Create a token at {github_token_url} with 'public_repo' scope."
+          "github_token": "Create a token at {github_token_url} with 'public_repo' scope.",
+          "debug_logging": "Log detailed API responses and data processing info. Check Home Assistant logs for output."
         }
       }
     },
@@ -30,11 +32,13 @@
         "data": {
           "update_interval": "Update interval (seconds)",
           "error_reporting": "Enable automatic error reporting",
-          "github_token": "GitHub Personal Access Token"
+          "github_token": "GitHub Personal Access Token",
+          "debug_logging": "Enable debug logging"
         },
         "data_description": {
           "error_reporting": "When enabled, errors will be automatically reported to GitHub issues.",
-          "github_token": "Create a token at {github_token_url} with 'public_repo' scope."
+          "github_token": "Create a token at {github_token_url} with 'public_repo' scope.",
+          "debug_logging": "Log detailed API responses and data processing info. Check Home Assistant logs for output."
         }
       }
     },

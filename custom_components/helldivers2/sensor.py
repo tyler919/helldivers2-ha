@@ -785,17 +785,50 @@ class Helldivers2Sensor(CoordinatorEntity[Helldivers2Coordinator], SensorEntity)
             "manufacturer": "Arrowhead Game Studios",
             "model": "Galactic War",
         }
+        self._logger = logging.getLogger(__name__)
 
     @property
     def native_value(self) -> Any:
         """Return the state of the sensor."""
         if self.coordinator.data is None:
             return None
-        return self.entity_description.value_fn(self.coordinator.data)
+        try:
+            value = self.entity_description.value_fn(self.coordinator.data)
+            return value
+        except Exception as e:
+            # Log errors with debug info
+            from . import debug_log
+            debug_log(
+                self.coordinator.hass,
+                "Error getting value for sensor '%s': %s",
+                self.entity_description.key,
+                str(e),
+            )
+            self._logger.error(
+                "Error getting value for sensor '%s': %s",
+                self.entity_description.key,
+                e,
+            )
+            return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return additional state attributes."""
         if self.coordinator.data is None or self.entity_description.attr_fn is None:
             return None
-        return self.entity_description.attr_fn(self.coordinator.data)
+        try:
+            return self.entity_description.attr_fn(self.coordinator.data)
+        except Exception as e:
+            from . import debug_log
+            debug_log(
+                self.coordinator.hass,
+                "Error getting attributes for sensor '%s': %s",
+                self.entity_description.key,
+                str(e),
+            )
+            self._logger.error(
+                "Error getting attributes for sensor '%s': %s",
+                self.entity_description.key,
+                e,
+            )
+            return None

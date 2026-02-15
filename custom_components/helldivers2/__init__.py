@@ -19,6 +19,7 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_ERROR_REPORTING,
     CONF_GITHUB_TOKEN,
+    CONF_DEBUG_LOGGING,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -36,6 +37,7 @@ PANEL_ICON = "mdi:shield-sword"
 PANEL_NAME = "helldivers2-panel"
 PANEL_REGISTERED = "helldivers2_panel_registered"
 ISSUE_REPORTER = "helldivers2_issue_reporter"
+DEBUG_ENABLED = "helldivers2_debug_enabled"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -45,8 +47,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Initialize issue reporter if enabled
     error_reporting = entry.options.get(CONF_ERROR_REPORTING, False)
     github_token = entry.options.get(CONF_GITHUB_TOKEN, "")
+    debug_logging = entry.options.get(CONF_DEBUG_LOGGING, False)
 
     hass.data.setdefault(DOMAIN, {})
+
+    # Store debug setting
+    hass.data[DOMAIN][DEBUG_ENABLED] = debug_logging
+    if debug_logging:
+        _LOGGER.info("Debug logging enabled for Helldivers 2 integration")
 
     if error_reporting and github_token:
         reporter = GitHubIssueReporter(github_token)
@@ -179,3 +187,31 @@ async def _report_error(
 def get_error_reporter(hass: HomeAssistant) -> GitHubIssueReporter | None:
     """Get the error reporter instance."""
     return hass.data.get(DOMAIN, {}).get(ISSUE_REPORTER)
+
+
+def is_debug_enabled(hass: HomeAssistant) -> bool:
+    """Check if debug logging is enabled."""
+    return hass.data.get(DOMAIN, {}).get(DEBUG_ENABLED, False)
+
+
+def debug_log(hass: HomeAssistant, message: str, *args: Any) -> None:
+    """Log a debug message if debug logging is enabled."""
+    if is_debug_enabled(hass):
+        _LOGGER.warning("[DEBUG] " + message, *args)
+
+
+def debug_log_data(hass: HomeAssistant, label: str, data: Any) -> None:
+    """Log data in a formatted way if debug logging is enabled."""
+    if is_debug_enabled(hass):
+        import json
+        try:
+            if isinstance(data, (dict, list)):
+                # Truncate large data
+                data_str = json.dumps(data, indent=2, default=str)
+                if len(data_str) > 5000:
+                    data_str = data_str[:5000] + "\n... (truncated)"
+                _LOGGER.warning("[DEBUG] %s:\n%s", label, data_str)
+            else:
+                _LOGGER.warning("[DEBUG] %s: %s", label, data)
+        except Exception as e:
+            _LOGGER.warning("[DEBUG] %s: (failed to serialize: %s)", label, e)

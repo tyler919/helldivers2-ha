@@ -41,9 +41,14 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the Helldivers 2 API."""
+        from . import debug_log, debug_log_data
+
         try:
             if self._session is None:
                 self._session = aiohttp.ClientSession(headers=API_HEADERS)
+                debug_log(self.hass, "Created new aiohttp session with headers: %s", API_HEADERS)
+
+            debug_log(self.hass, "Starting API data fetch...")
 
             async with asyncio.timeout(30):
                 # Fetch all data concurrently
@@ -67,6 +72,12 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
                 steam,
             ) = results
 
+            # Log any errors from individual API calls
+            endpoint_names = ["war", "planets", "campaigns", "assignments", "dispatches", "steam"]
+            for name, result in zip(endpoint_names, results):
+                if isinstance(result, Exception):
+                    debug_log(self.hass, "API endpoint '%s' failed: %s", name, str(result))
+
             # Process data
             data: dict[str, Any] = {
                 "war": war if not isinstance(war, Exception) else {},
@@ -77,15 +88,26 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "steam": steam if not isinstance(steam, Exception) else [],
             }
 
+            # Debug log raw API responses
+            debug_log_data(self.hass, "API Response - war", data["war"])
+            debug_log_data(self.hass, "API Response - assignments (major orders)", data["assignments"])
+            debug_log_data(self.hass, "API Response - dispatches (news)", data["dispatches"])
+            debug_log(self.hass, "API Response - campaigns count: %d", len(data["campaigns"]) if isinstance(data["campaigns"], list) else 0)
+            debug_log(self.hass, "API Response - planets count: %d", len(data["planets"]) if isinstance(data["planets"], list) else 0)
+
             # Calculate aggregated stats
             data["stats"] = self._calculate_stats(data)
+            debug_log_data(self.hass, "Calculated stats", data["stats"])
 
+            debug_log(self.hass, "Data fetch completed successfully")
             return data
 
         except asyncio.TimeoutError as err:
+            debug_log(self.hass, "API request timed out after 30 seconds")
             await self._report_api_error("TimeoutError", "Timeout fetching Helldivers 2 data")
             raise UpdateFailed("Timeout fetching Helldivers 2 data") from err
         except aiohttp.ClientError as err:
+            debug_log(self.hass, "API client error: %s", str(err))
             await self._report_api_error("ClientError", str(err), traceback.format_exc())
             raise UpdateFailed(f"Error fetching Helldivers 2 data: {err}") from err
 
