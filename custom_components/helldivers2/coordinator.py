@@ -8,6 +8,7 @@ from datetime import timedelta
 from typing import Any
 
 import aiohttp
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -29,13 +30,19 @@ _LOGGER = logging.getLogger(__name__)
 class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator to manage fetching Helldivers 2 data."""
 
-    def __init__(self, hass: HomeAssistant, update_interval: int = DEFAULT_SCAN_INTERVAL) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        update_interval: int = DEFAULT_SCAN_INTERVAL,
+    ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=update_interval),
+            config_entry=entry,
         )
         self._session: aiohttp.ClientSession | None = None
         # Timeout per endpoint (seconds)
