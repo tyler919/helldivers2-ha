@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import traceback
 from datetime import timedelta
 from typing import Any
 
@@ -45,80 +44,85 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             config_entry=entry,
         )
         self._session: aiohttp.ClientSession | None = None
-        # Timeout per endpoint (seconds)
-        self._timeout = aiohttp.ClientTimeout(total=20, connect=10)
+        # Timeout per request attempt (seconds)
+        self._timeout = aiohttp.ClientTimeout(total=30, connect=10)
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the Helldivers 2 API."""
         from . import debug_log, debug_log_data
 
+        if self._session is None:
+            self._session = aiohttp.ClientSession(headers=API_HEADERS)
+            debug_log(self.hass, "Created new aiohttp session with headers: %s", API_HEADERS)
+
+        debug_log(self.hass, "Starting API data fetch...")
+
+        endpoints = [
+            ("war", API_WAR),
+            ("planets", API_PLANETS),
+            ("campaigns", API_CAMPAIGNS),
+            ("assignments", API_ASSIGNMENTS),
+            ("dispatches", API_DISPATCHES),
+            ("steam", API_STEAM),
+        ]
+
         try:
-            if self._session is None:
-                self._session = aiohttp.ClientSession(headers=API_HEADERS)
-                debug_log(self.hass, "Created new aiohttp session with headers: %s", API_HEADERS)
-
-            debug_log(self.hass, "Starting API data fetch...")
-
-            async with asyncio.timeout(60):
-                # Fetch all data concurrently
+            # Overall safety cap. Each endpoint also self-limits via its own
+            # ClientTimeout and retry budget, so a single slow endpoint fails on
+            # its own (captured below via return_exceptions) instead of taking
+            # down the whole update.
+            async with asyncio.timeout(120):
                 results = await asyncio.gather(
-                    self._fetch_json(API_WAR),
-                    self._fetch_json(API_PLANETS),
-                    self._fetch_json(API_CAMPAIGNS),
-                    self._fetch_json(API_ASSIGNMENTS),
-                    self._fetch_json(API_DISPATCHES),
-                    self._fetch_json(API_STEAM),
+                    *(self._fetch_json(url) for _, url in endpoints),
                     return_exceptions=True,
                 )
-
-            # Unpack results
-            (
-                war,
-                planets,
-                campaigns,
-                assignments,
-                dispatches,
-                steam,
-            ) = results
-
-            # Log any errors from individual API calls
-            endpoint_names = ["war", "planets", "campaigns", "assignments", "dispatches", "steam"]
-            for name, result in zip(endpoint_names, results):
-                if isinstance(result, Exception):
-                    debug_log(self.hass, "API endpoint '%s' failed: %s", name, str(result))
-
-            # Process data
-            data: dict[str, Any] = {
-                "war": war if not isinstance(war, Exception) else {},
-                "planets": planets if not isinstance(planets, Exception) else [],
-                "campaigns": campaigns if not isinstance(campaigns, Exception) else [],
-                "assignments": assignments if not isinstance(assignments, Exception) else [],
-                "dispatches": dispatches if not isinstance(dispatches, Exception) else [],
-                "steam": steam if not isinstance(steam, Exception) else [],
-            }
-
-            # Debug log raw API responses
-            debug_log_data(self.hass, "API Response - war", data["war"])
-            debug_log_data(self.hass, "API Response - assignments (major orders)", data["assignments"])
-            debug_log_data(self.hass, "API Response - dispatches (news)", data["dispatches"])
-            debug_log(self.hass, "API Response - campaigns count: %d", len(data["campaigns"]) if isinstance(data["campaigns"], list) else 0)
-            debug_log(self.hass, "API Response - planets count: %d", len(data["planets"]) if isinstance(data["planets"], list) else 0)
-
-            # Calculate aggregated stats
-            data["stats"] = self._calculate_stats(data)
-            debug_log_data(self.hass, "Calculated stats", data["stats"])
-
-            debug_log(self.hass, "Data fetch completed successfully")
-            return data
-
         except asyncio.TimeoutError as err:
-            debug_log(self.hass, "API request timed out after 60 seconds")
+            debug_log(self.hass, "API request timed out")
             await self._report_api_error("TimeoutError", "Timeout fetching Helldivers 2 data")
             raise UpdateFailed("Timeout fetching Helldivers 2 data") from err
-        except aiohttp.ClientError as err:
-            debug_log(self.hass, "API client error: %s", str(err))
-            await self._report_api_error("ClientError", str(err), traceback.format_exc())
-            raise UpdateFailed(f"Error fetching Helldivers 2 data: {err}") from err
+
+        # Log any per-endpoint failures, naming the endpoint that failed so a
+        # slow/unavailable endpoint can be diagnosed from the logs.
+        failed: list[str] = []
+        for (name, url), result in zip(endpoints, results):
+            if isinstance(result, Exception):
+                failed.append(name)
+                _LOGGER.warning(
+                    "Helldivers 2 API endpoint '%s' (%s) failed: %s", name, url, result
+                )
+
+        # Only fail the whole update if every endpoint failed; otherwise keep
+        # going with whatever data we did get so the sensors stay populated.
+        if len(failed) == len(endpoints):
+            message = f"All Helldivers 2 API endpoints failed: {', '.join(failed)}"
+            await self._report_api_error("ClientError", message)
+            raise UpdateFailed(message)
+
+        war, planets, campaigns, assignments, dispatches, steam = results
+
+        # Process data
+        data: dict[str, Any] = {
+            "war": war if not isinstance(war, Exception) else {},
+            "planets": planets if not isinstance(planets, Exception) else [],
+            "campaigns": campaigns if not isinstance(campaigns, Exception) else [],
+            "assignments": assignments if not isinstance(assignments, Exception) else [],
+            "dispatches": dispatches if not isinstance(dispatches, Exception) else [],
+            "steam": steam if not isinstance(steam, Exception) else [],
+        }
+
+        # Debug log raw API responses
+        debug_log_data(self.hass, "API Response - war", data["war"])
+        debug_log_data(self.hass, "API Response - assignments (major orders)", data["assignments"])
+        debug_log_data(self.hass, "API Response - dispatches (news)", data["dispatches"])
+        debug_log(self.hass, "API Response - campaigns count: %d", len(data["campaigns"]) if isinstance(data["campaigns"], list) else 0)
+        debug_log(self.hass, "API Response - planets count: %d", len(data["planets"]) if isinstance(data["planets"], list) else 0)
+
+        # Calculate aggregated stats
+        data["stats"] = self._calculate_stats(data)
+        debug_log_data(self.hass, "Calculated stats", data["stats"])
+
+        debug_log(self.hass, "Data fetch completed successfully")
+        return data
 
     async def _fetch_json(self, url: str, retries: int = 2) -> Any:
         """Fetch JSON data from a URL with retry logic."""
