@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import Helldivers2Coordinator
+from .sanitize import strip_markup
 
 
 @dataclass(frozen=True)
@@ -284,10 +285,10 @@ def get_major_order_title(data: dict[str, Any]) -> str:
     if assignments and isinstance(assignments, list) and len(assignments) > 0:
         order = assignments[0]
         if isinstance(order, dict):
-            briefing = order.get("briefing", "")
+            briefing = strip_markup(order.get("briefing"))
             if briefing:
                 return briefing[:255]
-            title = order.get("title", "No Active Order")
+            title = strip_markup(order.get("title"))
             return title[:255] if title else "No Active Order"
     return "No Active Order"
 
@@ -389,23 +390,19 @@ def get_latest_news(data: dict[str, Any]) -> str:
             message = item.get("message")
             if not message:
                 return "No News"
-            # Strip HTML-like tags
-            import re
-            clean = re.sub(r'<[^>]+>', '', message)
+            clean = strip_markup(message)
             return clean[:255] if clean else "No News"
     return "No News"
 
 
 def get_news_attrs(data: dict[str, Any]) -> dict[str, Any]:
     """Get news attributes."""
-    import re
     dispatches = data.get("dispatches", [])
     items = []
     if dispatches and isinstance(dispatches, list):
         for item in dispatches[:10]:
             if isinstance(item, dict):
-                message = item.get("message") or ""
-                clean = re.sub(r'<[^>]+>', '', message)
+                clean = strip_markup(item.get("message"))
                 items.append({
                     "message": clean,
                     "published": item.get("published", ""),

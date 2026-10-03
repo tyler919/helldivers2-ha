@@ -3,6 +3,10 @@
  * Custom sidebar panel for Home Assistant
  */
 
+// Every value from hass states/attributes is third-party API data: escape it
+// before it goes anywhere near innerHTML.
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
 class Helldivers2Panel extends HTMLElement {
   constructor() {
     super();
@@ -67,8 +71,13 @@ class Helldivers2Panel extends HTMLElement {
       return "---";
     }
     const n = parseInt(num);
-    if (isNaN(n)) return num;
+    if (isNaN(n)) return esc(num);
     return n.toLocaleString();
+  }
+
+  _formatPercent(num) {
+    const n = Number(num);
+    return Number.isFinite(n) ? n.toFixed(1) : "0";
   }
 
   _render() {
@@ -302,19 +311,19 @@ class Helldivers2Panel extends HTMLElement {
             <ha-icon icon="mdi:clipboard-text"></ha-icon>
             Major Order
           </div>
-          <div class="major-order-text">${d.majorOrder?.state || "No Active Order"}</div>
+          <div class="major-order-text">${esc(d.majorOrder?.state || "No Active Order")}</div>
           <div class="progress-bar">
             <div class="progress-fill" style="width: ${this._getProgressPercent()}%"></div>
-            <div class="progress-text">${d.majorOrderProgress?.state || "---"}</div>
+            <div class="progress-text">${esc(d.majorOrderProgress?.state || "---")}</div>
           </div>
           <div style="margin-top: 12px;">
             <div class="stat-row">
               <span class="stat-label">Time Remaining</span>
-              <span class="stat-value">${d.majorOrderTimeLeft?.state || "---"}</span>
+              <span class="stat-value">${esc(d.majorOrderTimeLeft?.state || "---")}</span>
             </div>
             <div class="stat-row">
               <span class="stat-label">Reward</span>
-              <span class="stat-value" style="color: #ffd700;">${d.majorOrderReward?.state || "---"}</span>
+              <span class="stat-value" style="color: #ffd700;">${esc(d.majorOrderReward?.state || "---")}</span>
             </div>
           </div>
         </div>
@@ -335,7 +344,7 @@ class Helldivers2Panel extends HTMLElement {
           </div>
           <div class="stat-row">
             <span class="stat-label">Success Rate</span>
-            <span class="stat-value">${d.successRate?.state || "---"}%</span>
+            <span class="stat-value">${esc(d.successRate?.state || "---")}%</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">Helldiver Deaths</span>
@@ -373,7 +382,7 @@ class Helldivers2Panel extends HTMLElement {
             <ha-icon icon="mdi:fire"></ha-icon>
             Hottest Planet
           </div>
-          <div class="big-stat" style="font-size: 24px;">${d.hottestPlanet?.state || "Unknown"}</div>
+          <div class="big-stat" style="font-size: 24px;">${esc(d.hottestPlanet?.state || "Unknown")}</div>
           ${this._renderHottestPlanetInfo()}
         </div>
 
@@ -381,7 +390,7 @@ class Helldivers2Panel extends HTMLElement {
         <div class="card">
           <div class="card-title">
             <ha-icon icon="mdi:earth"></ha-icon>
-            Active Campaigns (${d.activePlanets?.state || 0})
+            Active Campaigns (${esc(d.activePlanets?.state || 0)})
           </div>
           <div class="planet-list">
             ${this._renderPlanetList()}
@@ -399,9 +408,9 @@ class Helldivers2Panel extends HTMLElement {
       </div>
 
       <div class="version-info">
-        Game Version: ${d.gameVersion?.state || "Unknown"} |
-        Latest Patch: ${d.latestPatch?.state || "Unknown"} |
-        Avg Liberation: ${d.avgLiberation?.state || "0"}%
+        Game Version: ${esc(d.gameVersion?.state || "Unknown")} |
+        Latest Patch: ${esc(d.latestPatch?.state || "Unknown")} |
+        Avg Liberation: ${esc(d.avgLiberation?.state || "0")}%
       </div>
     `;
   }
@@ -433,20 +442,20 @@ class Helldivers2Panel extends HTMLElement {
         </div>
         <div class="stat-row">
           <span class="stat-label">Liberation</span>
-          <span class="stat-value">${attrs.liberation?.toFixed(1) || 0}%</span>
+          <span class="stat-value">${this._formatPercent(attrs.liberation)}%</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Sector</span>
-          <span class="stat-value">${attrs.sector || "Unknown"}</span>
+          <span class="stat-value">${esc(attrs.sector || "Unknown")}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Biome</span>
-          <span class="stat-value">${attrs.biome || "Unknown"}</span>
+          <span class="stat-value">${esc(attrs.biome || "Unknown")}</span>
         </div>
         ${attrs.hazards ? `
         <div class="stat-row">
           <span class="stat-label">Hazards</span>
-          <span class="stat-value" style="color: #f44336;">${attrs.hazards}</span>
+          <span class="stat-value" style="color: #f44336;">${esc(attrs.hazards)}</span>
         </div>
         ` : ""}
       </div>
@@ -461,9 +470,9 @@ class Helldivers2Panel extends HTMLElement {
 
     return campaigns.slice(0, 10).map(planet => `
       <div class="planet-item">
-        <div class="planet-name">${planet.name}</div>
+        <div class="planet-name">${esc(planet.name)}</div>
         <div class="planet-players">${this._formatNumber(planet.players)} players</div>
-        <div class="planet-liberation">${planet.liberation?.toFixed(1) || 0}%</div>
+        <div class="planet-liberation">${this._formatPercent(planet.liberation)}%</div>
       </div>
     `).join("");
   }
@@ -475,7 +484,7 @@ class Helldivers2Panel extends HTMLElement {
     }
 
     return news.slice(0, 3).map(item => `
-      <div class="news-item">${item.message || "No content"}</div>
+      <div class="news-item">${esc(item.message || "No content")}</div>
     `).join("");
   }
 }
