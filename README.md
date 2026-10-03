@@ -14,7 +14,6 @@ Track the Helldivers 2 Galactic War status directly in Home Assistant! Monitor p
 - **26+ Sensors** - Comprehensive tracking of all war statistics
 - **Real-time Updates** - Configurable update interval (30-600 seconds)
 - **Debug Logging** - Optional detailed logging for troubleshooting
-- **Automatic Error Reporting** - Optional GitHub issue reporting for errors
 - **Retry Logic** - Automatic retries with exponential backoff for API reliability
 
 ### What You Can Track
@@ -68,10 +67,10 @@ The integration is configured via the UI. Options include:
 |--------|-------------|---------|
 | **Update Interval** | How often to fetch new data (30-600 seconds) | 60 seconds |
 | **Enable Debug Logging** | Log detailed API responses for troubleshooting | Off |
-| **Enable Error Reporting** | Automatically report errors to GitHub | Off |
-| **GitHub Token** | Personal access token for error reporting | - |
 
 To change options after setup: Settings > Devices & Services > Helldivers 2 > Configure
+
+The built-in GitHub error reporter was removed in 1.6.5. Use [ha-gh-issue-reporter](https://github.com/tyler919/ha-gh-issue-reporter) instead. Any token saved in the old options is deleted from HA's storage the next time the integration loads.
 
 ## Sensors
 
