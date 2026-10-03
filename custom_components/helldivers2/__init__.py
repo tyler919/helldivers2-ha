@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import traceback
 from pathlib import Path
 from typing import Any
 
@@ -17,14 +16,12 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CONF_UPDATE_INTERVAL,
-    CONF_ERROR_REPORTING,
-    CONF_GITHUB_TOKEN,
     CONF_DEBUG_LOGGING,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    LEGACY_REPORTER_OPTIONS,
 )
 from .coordinator import Helldivers2Coordinator
-from .issue_reporter import GitHubIssueReporter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,17 +33,25 @@ PANEL_TITLE = "Helldivers 2"
 PANEL_ICON = "mdi:shield-sword"
 PANEL_NAME = "helldivers2-panel"
 PANEL_REGISTERED = "helldivers2_panel_registered"
-ISSUE_REPORTER = "helldivers2_issue_reporter"
 DEBUG_ENABLED = "helldivers2_debug_enabled"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Helldivers 2 from a config entry."""
-    update_interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    # The built-in GitHub reporter was removed (use gh_issue_reporter instead).
+    # Drop its stored options so the old PAT doesn't linger in .storage. This
+    # runs before the update listener is added, so it doesn't trigger a reload.
+    if any(key in entry.options for key in LEGACY_REPORTER_OPTIONS):
+        hass.config_entries.async_update_entry(
+            entry,
+            options={
+                k: v for k, v in entry.options.items()
+                if k not in LEGACY_REPORTER_OPTIONS
+            },
+        )
+        _LOGGER.info("Removed legacy GitHub error-reporting options")
 
-    # Initialize issue reporter if enabled
-    error_reporting = entry.options.get(CONF_ERROR_REPORTING, False)
-    github_token = entry.options.get(CONF_GITHUB_TOKEN, "")
+    update_interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_SCAN_INTERVAL)
     debug_logging = entry.options.get(CONF_DEBUG_LOGGING, False)
 
     hass.data.setdefault(DOMAIN, {})
@@ -56,33 +61,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if debug_logging:
         _LOGGER.info("Debug logging enabled for Helldivers 2 integration")
 
-    if error_reporting and github_token:
-        reporter = GitHubIssueReporter(github_token)
-        hass.data[DOMAIN][ISSUE_REPORTER] = reporter
-        _LOGGER.info("Error reporting enabled")
-    else:
-        hass.data[DOMAIN][ISSUE_REPORTER] = None
+    coordinator = Helldivers2Coordinator(hass, entry, update_interval)
+    await coordinator.async_config_entry_first_refresh()
 
-    try:
-        coordinator = Helldivers2Coordinator(hass, entry, update_interval)
-        await coordinator.async_config_entry_first_refresh()
+    hass.data[DOMAIN][entry.entry_id] = coordinator
 
-        hass.data[DOMAIN][entry.entry_id] = coordinator
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-        entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    # Register the frontend panel (only once)
+    if not hass.data[DOMAIN].get(PANEL_REGISTERED):
+        await _async_register_panel(hass)
+        hass.data[DOMAIN][PANEL_REGISTERED] = True
 
-        # Register the frontend panel (only once)
-        if not hass.data[DOMAIN].get(PANEL_REGISTERED):
-            await _async_register_panel(hass)
-            hass.data[DOMAIN][PANEL_REGISTERED] = True
+    return True
 
-        return True
-
-    except Exception as e:
-        await _report_error(hass, "SetupError", str(e), traceback.format_exc())
-        raise
 
 
 async def _async_register_panel(hass: HomeAssistant) -> None:
@@ -120,73 +114,32 @@ async def _async_register_panel(hass: HomeAssistant) -> None:
 
         _LOGGER.info("Helldivers 2 panel registered")
     except Exception as e:
-        await _report_error(hass, "PanelRegistrationError", str(e), traceback.format_exc())
         _LOGGER.error("Failed to register panel: %s", e)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    try:
-        if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-            coordinator: Helldivers2Coordinator = hass.data[DOMAIN].pop(entry.entry_id)
-            await coordinator.async_shutdown()
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        coordinator: Helldivers2Coordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        await coordinator.async_shutdown()
 
-            # Close issue reporter if exists
-            reporter = hass.data[DOMAIN].get(ISSUE_REPORTER)
-            if reporter:
-                await reporter.close()
-                hass.data[DOMAIN][ISSUE_REPORTER] = None
+        # Only remove panel if no other entries exist
+        remaining_entries = [
+            e for e in hass.config_entries.async_entries(DOMAIN)
+            if e.entry_id != entry.entry_id
+        ]
+        if not remaining_entries and hass.data[DOMAIN].get(PANEL_REGISTERED):
+            async_remove_panel(hass, PANEL_URL)
+            hass.data[DOMAIN][PANEL_REGISTERED] = False
+            _LOGGER.info("Helldivers 2 panel removed")
 
-            # Only remove panel if no other entries exist
-            remaining_entries = [
-                e for e in hass.config_entries.async_entries(DOMAIN)
-                if e.entry_id != entry.entry_id
-            ]
-            if not remaining_entries and hass.data[DOMAIN].get(PANEL_REGISTERED):
-                async_remove_panel(hass, PANEL_URL)
-                hass.data[DOMAIN][PANEL_REGISTERED] = False
-                _LOGGER.info("Helldivers 2 panel removed")
-
-        return unload_ok
-
-    except Exception as e:
-        await _report_error(hass, "UnloadError", str(e), traceback.format_exc())
-        raise
+    return unload_ok
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
-
-
-async def _report_error(
-    hass: HomeAssistant,
-    error_type: str,
-    error_message: str,
-    error_traceback: str | None = None,
-    additional_info: dict[str, Any] | None = None,
-) -> None:
-    """Report an error to GitHub if error reporting is enabled."""
-    try:
-        reporter = hass.data.get(DOMAIN, {}).get(ISSUE_REPORTER)
-        if reporter:
-            info = additional_info or {}
-            info["ha_version"] = hass.config.version
-            await reporter.report_error(
-                error_type=error_type,
-                error_message=error_message,
-                traceback=error_traceback,
-                additional_info=info,
-            )
-    except Exception as e:
-        _LOGGER.debug("Failed to report error: %s", e)
-
-
-# Export the report_error function for use by other modules
-def get_error_reporter(hass: HomeAssistant) -> GitHubIssueReporter | None:
-    """Get the error reporter instance."""
-    return hass.data.get(DOMAIN, {}).get(ISSUE_REPORTER)
 
 
 def is_debug_enabled(hass: HomeAssistant) -> bool:

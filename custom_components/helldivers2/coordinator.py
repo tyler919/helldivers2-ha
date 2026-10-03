@@ -78,7 +78,6 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
         except asyncio.TimeoutError as err:
             debug_log(self.hass, "API request timed out")
-            await self._report_api_error("TimeoutError", "Timeout fetching Helldivers 2 data")
             raise UpdateFailed("Timeout fetching Helldivers 2 data") from err
 
         # Log any per-endpoint failures, naming the endpoint that failed so a
@@ -95,7 +94,6 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
         # going with whatever data we did get so the sensors stay populated.
         if len(failed) == len(endpoints):
             message = f"All Helldivers 2 API endpoints failed: {', '.join(failed)}"
-            await self._report_api_error("ClientError", message)
             raise UpdateFailed(message)
 
         war, planets, campaigns, assignments, dispatches, steam = results
@@ -205,29 +203,6 @@ class Helldivers2Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             stats["players_by_faction"] = faction_players
 
         return stats
-
-    async def _report_api_error(
-        self,
-        error_type: str,
-        error_message: str,
-        error_traceback: str | None = None,
-    ) -> None:
-        """Report API errors to GitHub if error reporting is enabled."""
-        try:
-            from . import get_error_reporter
-            reporter = get_error_reporter(self.hass)
-            if reporter:
-                await reporter.report_error(
-                    error_type=f"API_{error_type}",
-                    error_message=error_message,
-                    traceback=error_traceback,
-                    additional_info={
-                        "component": "coordinator",
-                        "ha_version": self.hass.config.version,
-                    },
-                )
-        except Exception as e:
-            _LOGGER.debug("Failed to report API error: %s", e)
 
     async def async_shutdown(self) -> None:
         """Shutdown the coordinator."""

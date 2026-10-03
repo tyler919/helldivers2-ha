@@ -15,8 +15,6 @@ from .const import (
     API_WAR,
     API_HEADERS,
     CONF_UPDATE_INTERVAL,
-    CONF_ERROR_REPORTING,
-    CONF_GITHUB_TOKEN,
     CONF_DEBUG_LOGGING,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -50,25 +48,16 @@ class Helldivers2ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:
                 errors["base"] = "cannot_connect"
             else:
-                # Validate GitHub token if error reporting is enabled
-                if user_input.get(CONF_ERROR_REPORTING) and user_input.get(CONF_GITHUB_TOKEN):
-                    token_valid = await self._validate_github_token(user_input[CONF_GITHUB_TOKEN])
-                    if not token_valid:
-                        errors["base"] = "invalid_github_token"
-
-                if not errors:
-                    return self.async_create_entry(
-                        title="Helldivers 2",
-                        data={},
-                        options={
-                            CONF_UPDATE_INTERVAL: user_input.get(
-                                CONF_UPDATE_INTERVAL, DEFAULT_SCAN_INTERVAL
-                            ),
-                            CONF_ERROR_REPORTING: user_input.get(CONF_ERROR_REPORTING, False),
-                            CONF_GITHUB_TOKEN: user_input.get(CONF_GITHUB_TOKEN, ""),
-                            CONF_DEBUG_LOGGING: user_input.get(CONF_DEBUG_LOGGING, False),
-                        },
-                    )
+                return self.async_create_entry(
+                    title="Helldivers 2",
+                    data={},
+                    options={
+                        CONF_UPDATE_INTERVAL: user_input.get(
+                            CONF_UPDATE_INTERVAL, DEFAULT_SCAN_INTERVAL
+                        ),
+                        CONF_DEBUG_LOGGING: user_input.get(CONF_DEBUG_LOGGING, False),
+                    },
+                )
 
         return self.async_show_form(
             step_id="user",
@@ -87,45 +76,13 @@ class Helldivers2ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                     ),
                     vol.Optional(
-                        CONF_ERROR_REPORTING,
-                        default=False,
-                    ): selector.BooleanSelector(),
-                    vol.Optional(
-                        CONF_GITHUB_TOKEN,
-                        default="",
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.PASSWORD,
-                        )
-                    ),
-                    vol.Optional(
                         CONF_DEBUG_LOGGING,
                         default=False,
                     ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,
-            description_placeholders={
-                "github_token_url": "https://github.com/settings/tokens/new?scopes=public_repo",
-            },
         )
-
-    async def _validate_github_token(self, token: str) -> bool:
-        """Validate the GitHub token."""
-        if not token:
-            return False
-
-        headers = {
-            "Authorization": f"token {token}",
-            "Accept": "application/vnd.github.v3+json",
-        }
-
-        try:
-            async with aiohttp.ClientSession(headers=headers) as session:
-                async with session.get("https://api.github.com/user", timeout=aiohttp.ClientTimeout(total=10)) as response:
-                    return response.status == 200
-        except Exception:
-            return False
 
     @staticmethod
     @callback
@@ -146,14 +103,7 @@ class Helldivers2OptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Validate GitHub token if error reporting is enabled
-            if user_input.get(CONF_ERROR_REPORTING) and user_input.get(CONF_GITHUB_TOKEN):
-                token_valid = await self._validate_github_token(user_input[CONF_GITHUB_TOKEN])
-                if not token_valid:
-                    errors["base"] = "invalid_github_token"
-
-            if not errors:
-                return self.async_create_entry(title="", data=user_input)
+            return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="init",
@@ -174,42 +124,10 @@ class Helldivers2OptionsFlow(config_entries.OptionsFlow):
                         )
                     ),
                     vol.Optional(
-                        CONF_ERROR_REPORTING,
-                        default=self.config_entry.options.get(CONF_ERROR_REPORTING, False),
-                    ): selector.BooleanSelector(),
-                    vol.Optional(
-                        CONF_GITHUB_TOKEN,
-                        default=self.config_entry.options.get(CONF_GITHUB_TOKEN, ""),
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.PASSWORD,
-                        )
-                    ),
-                    vol.Optional(
                         CONF_DEBUG_LOGGING,
                         default=self.config_entry.options.get(CONF_DEBUG_LOGGING, False),
                     ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,
-            description_placeholders={
-                "github_token_url": "https://github.com/settings/tokens/new?scopes=public_repo",
-            },
         )
-
-    async def _validate_github_token(self, token: str) -> bool:
-        """Validate the GitHub token."""
-        if not token:
-            return False
-
-        headers = {
-            "Authorization": f"token {token}",
-            "Accept": "application/vnd.github.v3+json",
-        }
-
-        try:
-            async with aiohttp.ClientSession(headers=headers) as session:
-                async with session.get("https://api.github.com/user", timeout=aiohttp.ClientTimeout(total=10)) as response:
-                    return response.status == 200
-        except Exception:
-            return False
